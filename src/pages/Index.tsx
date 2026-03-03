@@ -43,7 +43,7 @@ const Index = () => {
         <header className="text-center mb-6">
           <h1 className="text-3xl font-display font-black text-gradient-star flex items-center justify-center gap-2">
             <Sparkles className="text-primary" size={28} />
-            ほしぞらナビ
+            星空ナビ
             <Sparkles className="text-primary" size={28} />
           </h1>
           {location && (
@@ -90,7 +90,7 @@ const Index = () => {
               >
                 <span className="text-3xl block mb-1">🎮</span>
                 <p className="font-display font-bold text-sm text-foreground">星クイズ</p>
-                <p className="text-[10px] text-muted-foreground">ちしきをためそう！</p>
+                <p className="text-[10px] text-muted-foreground">知識をためそう！</p>
               </button>
             </div>
           </div>
