@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 export default defineConfig({
+  server: {
+    host: true,
+    allowedHosts: ['.trycloudflare.com']
+  },
   plugins: [react()],
   test: {
     environment: "jsdom",
