@@ -1,6 +1,6 @@
-import { Star, BookOpen, Gamepad2, Compass } from "lucide-react";
+import { Star, BookOpen, Gamepad2, Compass, MapPin } from "lucide-react";
 
-type Tab = "home" | "map" | "encyclopedia" | "quiz";
+type Tab = "home" | "map" | "encyclopedia" | "quiz" | "city";
 
 interface Props {
   active: Tab;
@@ -12,6 +12,9 @@ const tabs: { id: Tab; icon: typeof Star; label: string }[] = [
   { id: "map", icon: Compass, label: "星空" },
   { id: "encyclopedia", icon: BookOpen, label: "ずかん" },
   { id: "quiz", icon: Gamepad2, label: "クイズ" },
+  
+  // new city-selection button
+  { id: "city", icon: MapPin, label: "都市" },
 ];
 
 const BottomNav = ({ active, onChange }: Props) => {
