@@ -140,6 +140,69 @@ export const GENRE_LABEL_JA: Record<ConstellationGenre, string> = {
 
 export { STARS, CONSTELLATIONS };
 
+/**
+ * Converts horizontal coordinates (altitude/azimuth) to equatorial coordinates (RA/Dec).
+ * @param alt Altitude in degrees.
+ * @param az Azimuth in degrees (North=0, East=90).
+ * @param lat Observer's latitude in degrees.
+ * @param lst Local Sidereal Time in degrees.
+ * @returns Equatorial coordinates { ra, dec }.
+ */
+export function horizontalToEquatorial(
+  alt: number,
+  az: number,
+  lat: number,
+  lst: number
+): { ra: number; dec: number } {
+  const altRad = deg2rad(alt);
+  const azRad = deg2rad(az);
+  const latRad = deg2rad(lat);
+
+  const sinDec = Math.sin(altRad) * Math.sin(latRad) + Math.cos(altRad) * Math.cos(latRad) * Math.cos(azRad);
+  const decRad = Math.asin(sinDec);
+  const dec = rad2deg(decRad);
+
+  const cosHA = (Math.sin(altRad) - Math.sin(decRad) * Math.sin(latRad)) / (Math.cos(decRad) * Math.cos(latRad));
+  let ha = rad2deg(Math.acos(Math.max(-1, Math.min(1, cosHA))));
+
+  if (Math.sin(azRad) > 0) {
+    ha = 360 - ha;
+  }
+
+  let ra = lst - ha;
+  ra = ((ra % 360) + 360) % 360;
+
+  return { ra, dec };
+}
+
+/**
+ * Calculates the approximate center of a constellation.
+ * @param constellation The constellation object.
+ * @returns The center coordinates { ra, dec } or null if not calculable.
+ */
+export function getConstellationCenter(constellation: Constellation): { ra: number; dec: number } | null {
+  const starNames = constellation.stars;
+  if (starNames.length === 0) return null;
+
+  const conStars = starNames.map(name => STARS.find(s => s.name === name)).filter(s => s) as Star[];
+  if (conStars.length === 0) return null;
+
+  const sum = conStars.reduce((acc, star) => {
+    const raRad = deg2rad(star.ra);
+    const decRad = deg2rad(star.dec);
+    acc.x += Math.cos(decRad) * Math.cos(raRad);
+    acc.y += Math.cos(decRad) * Math.sin(raRad);
+    acc.z += Math.sin(decRad);
+    return acc;
+  }, { x: 0, y: 0, z: 0 });
+
+  const avg = { x: sum.x / conStars.length, y: sum.y / conStars.length, z: sum.z / conStars.length };
+  const centerRa = rad2deg(Math.atan2(avg.y, avg.x));
+  const centerDec = rad2deg(Math.atan2(avg.z, Math.sqrt(avg.x * avg.x + avg.y * avg.y)));
+
+  return { ra: (centerRa + 360) % 360, dec: centerDec };
+}
+
 /** Get visible stars for a given location and time */
 export function getVisibleStars(
   lat: number,
