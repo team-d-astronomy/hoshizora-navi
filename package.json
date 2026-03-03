@@ -1,8 +1,8 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "hoshizora-navi",
   "version": "0.0.0",
   "private": true,
-  "description": "**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID",
+  "description": "Hoshizora Navi web app",
   "homepage": "https://github.com/NilNoX/sky-explorer-kids#readme",
   "bugs": {
     "url": "https://github.com/NilNoX/sky-explorer-kids/issues"
