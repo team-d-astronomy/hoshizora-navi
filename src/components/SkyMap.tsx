@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   getVisibleStars,
   horizontalToScreen,
+  equatorialToHorizontal,
+  horizontalToEquatorial,
+  localSiderealTime,
+  julianDate,
   CONSTELLATIONS,
+  STARS,
   type Constellation,
   type Star,
 } from "@/lib/astronomy";
@@ -10,16 +15,16 @@ import {
 interface SkyMapProps {
   lat: number;
   lon: number;
-  showBelow?: boolean;
+  centerTarget?: { ra: number; dec: number } | null;
   onSelectConstellation?: (c: Constellation) => void;
 }
 
-const SkyMap = ({ lat, lon, showBelow = true, onSelectConstellation }: SkyMapProps) => {
+const SkyMap = ({ lat, lon, centerTarget = null, onSelectConstellation }: SkyMapProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 400, height: 400 });
   const [hoveredStar, setHoveredStar] = useState<string | null>(null);
-  const starsScreenRef = useRef<{ star: Star & { altitude: number; azimuth: number }; x: number; y: number }[]>([]);
+  const starsScreenRef = useRef<{ star: Star; x: number; y: number; visible: boolean }[]>([]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -37,9 +42,31 @@ const SkyMap = ({ lat, lon, showBelow = true, onSelectConstellation }: SkyMapPro
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
+    const now = new Date();
+    const jd = julianDate(now);
+    const realLst = localSiderealTime(jd, lon);
+
+    // Determine the center of the view for projection
+    const viewCenterRa = centerTarget ? centerTarget.ra : realLst;
+    const viewCenterDec = centerTarget ? centerTarget.dec : lat;
+
     // Horizon circle
+    // This is now dynamic based on the view center
     ctx.beginPath();
-    ctx.arc(width / 2, height / 2, Math.min(width, height) * 0.45 * (90 / 120), 0, Math.PI * 2);
+    for (let az = 0; az <= 360; az += 5) {
+      // 1. Get a point on the real horizon (alt=0)
+      const { ra, dec } = horizontalToEquatorial(0, az, lat, realLst);
+      // 2. Find where that point is in our current view
+      const { altitude: viewAlt, azimuth: viewAz } = equatorialToHorizontal(ra, dec, viewCenterDec, viewCenterRa);
+      // 3. Project it to the screen
+      const { x, y } = horizontalToScreen(viewAlt, viewAz, width, height, true);
+
+      if (az === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
     ctx.strokeStyle = "hsla(175, 70%, 45%, 0.3)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
@@ -55,21 +82,22 @@ const SkyMap = ({ lat, lon, showBelow = true, onSelectConstellation }: SkyMapPro
     ctx.fillText("E 東", width - 12, height / 2 + 5);
     ctx.fillText("W 西", 16, height / 2 + 5);
 
-    const now = new Date();
-    const visibleStars = getVisibleStars(lat, lon, now, showBelow);
-
     // Map to screen coords
-    const mapped = visibleStars.map((s) => {
-      const pos = horizontalToScreen(s.altitude, s.azimuth, width, height, showBelow);
-      return { star: s, ...pos };
+    const allStarsOnScreen = STARS.map((star) => {
+      // Real coordinates for visibility check
+      const { altitude: realAlt } = equatorialToHorizontal(star.ra, star.dec, lat, realLst);
+      // View coordinates for projection
+      const { altitude: viewAlt, azimuth: viewAz } = equatorialToHorizontal(star.ra, star.dec, viewCenterDec, viewCenterRa);
+      const { x, y } = horizontalToScreen(viewAlt, viewAz, width, height, true);
+      return { star, x, y, visible: realAlt > -5 };
     });
-    starsScreenRef.current = mapped;
+    starsScreenRef.current = allStarsOnScreen;
 
     // Draw constellation lines
     CONSTELLATIONS.forEach((con) => {
       con.lines.forEach(([a, b]) => {
-        const sa = mapped.find((m) => m.star.name === a);
-        const sb = mapped.find((m) => m.star.name === b);
+        const sa = allStarsOnScreen.find((m) => m.star.name === a);
+        const sb = allStarsOnScreen.find((m) => m.star.name === b);
         if (sa && sb) {
           const alpha = sa.visible && sb.visible ? 0.4 : 0.15;
           ctx.beginPath();
@@ -83,7 +111,7 @@ const SkyMap = ({ lat, lon, showBelow = true, onSelectConstellation }: SkyMapPro
     });
 
     // Draw stars
-    mapped.forEach(({ star, x, y, visible }) => {
+    allStarsOnScreen.forEach(({ star, x, y, visible }) => {
       const baseSize = Math.max(1, 4 - star.magnitude * 0.8);
       const alpha = visible ? 1 : 0.25;
       const isHovered = hoveredStar === star.name;
@@ -111,7 +139,7 @@ const SkyMap = ({ lat, lon, showBelow = true, onSelectConstellation }: SkyMapPro
         ctx.fillText(star.nameJa, x, y - baseSize - 6);
       }
     });
-  }, [lat, lon, showBelow, size, hoveredStar]);
+  }, [lat, lon, centerTarget, size, hoveredStar]);
 
   useEffect(() => {
     draw();

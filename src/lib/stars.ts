@@ -126,6 +126,24 @@ const ALL_STARS_DATA: Star[] = [
   { name: "Hyadum I", nameJa: "ヒアデウムI", ra: 65.9, dec: 15.62, magnitude: 3.65, constellation: "taurus" },
 ];
 
+// --- More constellations for encyclopedia ---
+const MORE_STARS: Star[] = [
+  { name: "Rasalhague", nameJa: "ラス・アルハゲ", ra: 262.2, dec: 12.56, magnitude: 2.07, constellation: "ophiuchus" },
+  { name: "Unukalhai", nameJa: "ウヌクアルハイ", ra: 236.3, dec: 6.42, magnitude: 2.63, constellation: "serpens" },
+  { name: "Gienah Corvi", nameJa: "ギェナー", ra: 184.2, dec: -17.54, magnitude: 2.59, constellation: "corvus" },
+  { name: "Kraz", nameJa: "クラーズ", ra: 185.9, dec: -22.35, magnitude: 2.65, constellation: "corvus" },
+  { name: "Algorab", nameJa: "アルゴラブ", ra: 186.9, dec: -16.51, magnitude: 2.94, constellation: "corvus" },
+  { name: "Minkar", nameJa: "ミンカル", ra: 182.2, dec: -23.39, magnitude: 3.0, constellation: "corvus" },
+  { name: "Alkes", nameJa: "アルケス", ra: 169.8, dec: -18.3, magnitude: 3.56, constellation: "crater" },
+  { name: "Mothallah", nameJa: "メタル", ra: 26.1, dec: 29.6, magnitude: 3.42, constellation: "triangulum" },
+  { name: "Cor Caroli", nameJa: "コル・カロリ", ra: 193.9, dec: 38.32, magnitude: 2.89, constellation: "canes-venatici" },
+  { name: "Naos", nameJa: "ナオス", ra: 120.7, dec: -40.0, magnitude: 2.21, constellation: "puppis" },
+  { name: "Suhail", nameJa: "スハイル", ra: 136.6, dec: -43.43, magnitude: 2.22, constellation: "vela" },
+  { name: "Sham", nameJa: "シャム", ra: 298.5, dec: 19.47, magnitude: 4.37, constellation: "sagitta" },
+  { name: "Sualocin", nameJa: "スアロキン", ra: 309.9, dec: 15.8, magnitude: 3.77, constellation: "delphinus" },
+];
+ALL_STARS_DATA.push(...MORE_STARS);
+
 /**
  * The complete list of stars, sorted by magnitude (brightest first).
  */
