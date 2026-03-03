@@ -4,13 +4,14 @@ import SkyMap from "@/components/SkyMap";
 import ConstellationList from "@/components/ConstellationList";
 import ConstellationCard from "@/components/ConstellationCard";
 import StarQuiz from "@/components/StarQuiz";
+import Horoscope from "@/components/Horoscope";
 import BottomNav from "@/components/BottomNav";
 import DeviceCompass from "@/components/DeviceCompass";
 import ARSkyView from "@/components/ARSkyView";
 import { type Constellation } from "@/lib/astronomy";
 import { MapPin, Star, Sparkles } from "lucide-react";
 
-type Tab = "home" | "map" | "encyclopedia" | "quiz";
+type Tab = "home" | "map" | "encyclopedia" | "quiz" | "fortune";
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>("home");
@@ -147,6 +148,14 @@ const Index = () => {
           <div className="space-y-4 animate-in fade-in duration-500">
             <h2 className="text-lg font-display font-bold text-foreground">🎮 星クイズ</h2>
             <StarQuiz />
+          </div>
+        )}
+
+        {/* Fortune Tab */}
+        {tab === "fortune" && (
+          <div className="space-y-4 animate-in fade-in duration-500">
+            <h2 className="text-lg font-display font-bold text-foreground">🔮 星座うらない</h2>
+            <Horoscope />
           </div>
         )}
       </main>
