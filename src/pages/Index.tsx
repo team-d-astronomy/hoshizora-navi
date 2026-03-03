@@ -4,12 +4,13 @@ import SkyMap from "@/components/SkyMap";
 import ConstellationList from "@/components/ConstellationList";
 import ConstellationCard from "@/components/ConstellationCard";
 import StarQuiz from "@/components/StarQuiz";
+import StarMapPin from "@/components/StarMapPin";
 import BottomNav from "@/components/BottomNav";
 import DeviceCompass from "@/components/DeviceCompass";
 import { type Constellation } from "@/lib/astronomy";
 import { MapPin, Star, Sparkles } from "lucide-react";
 
-type Tab = "home" | "map" | "encyclopedia" | "quiz";
+type Tab = "home" | "map" | "encyclopedia" | "quiz" | "city";
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>("home");
@@ -137,6 +138,13 @@ const Index = () => {
           <div className="space-y-4 animate-in fade-in duration-500">
             <h2 className="text-lg font-display font-bold text-foreground">🎮 星クイズ</h2>
             <StarQuiz />
+          </div>
+        )}
+
+        {/* City MapPin Tab */}
+        {tab === "city" && (
+          <div className="animate-in fade-in duration-500 -m-4">
+            <StarMapPin />
           </div>
         )}
       </main>
