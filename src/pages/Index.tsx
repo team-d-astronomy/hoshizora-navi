@@ -78,7 +78,7 @@ const Index = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => setTab("encyclopedia")}
                 className="bg-card/60 backdrop-blur border border-border rounded-2xl p-4 text-center hover:bg-muted/50 transition-all active:scale-95"
@@ -94,6 +94,14 @@ const Index = () => {
                 <span className="text-3xl block mb-1">🎮</span>
                 <p className="font-display font-bold text-sm text-foreground">星クイズ</p>
                 <p className="text-[10px] text-muted-foreground">知識をためそう！</p>
+              </button>
+                            <button
+                onClick={() => setTab("fortune")}
+                className="bg-card/60 backdrop-blur border border-border rounded-2xl p-4 text-center hover:bg-muted/50 transition-all active:scale-95"
+              >
+                <span className="text-3xl block mb-1">🔮</span>
+                <p className="font-display font-bold text-sm text-foreground">星座うらない</p>
+                <p className="text-[10px] text-muted-foreground">今日の運勢は？</p>
               </button>
             </div>
           </div>
