@@ -35,11 +35,23 @@ const headingFromEvent = (event: DeviceOrientationEvent): number | null => {
   return null;
 };
 
-const pitchFromEvent = (event: DeviceOrientationEvent): number => {
-  if (typeof event.beta === "number" && Number.isFinite(event.beta)) {
-    return Math.max(-90, Math.min(90, event.beta));
-  }
-  return 0;
+const clampAltitude = (value: number) => Math.max(-90, Math.min(90, value));
+
+const cameraAltitudeFromEvent = (event: DeviceOrientationEvent): number => {
+  const beta = typeof event.beta === "number" && Number.isFinite(event.beta) ? event.beta : 0;
+  const gamma = typeof event.gamma === "number" && Number.isFinite(event.gamma) ? event.gamma : 0;
+
+  // DeviceOrientation beta/gamma axes are device-relative.
+  // Convert to a camera-like altitude where "toward sky" is positive.
+  const screenAngle =
+    typeof window !== "undefined"
+      ? window.screen.orientation?.angle ?? ((window as Window & { orientation?: number }).orientation ?? 0)
+      : 0;
+
+  const normalizedScreenAngle = normalizeDegree(screenAngle);
+  if (normalizedScreenAngle === 90) return clampAltitude(-gamma);
+  if (normalizedScreenAngle === 270) return clampAltitude(gamma);
+  return clampAltitude(-beta);
 };
 
 const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
@@ -56,7 +68,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("loading");
   const [isListening, setIsListening] = useState(false);
   const [heading, setHeading] = useState(0);
-  const [pitch, setPitch] = useState(0);
+  const [cameraAltitude, setCameraAltitude] = useState(0);
   const [now, setNow] = useState(() => new Date());
 
   const stars = useMemo(() => getVisibleStars(lat, lon, now, true), [lat, lon, now]);
@@ -125,7 +137,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
       setHeading(nextHeading);
       setOrientationStatus("active");
     }
-    setPitch(pitchFromEvent(event));
+    setCameraAltitude(cameraAltitudeFromEvent(event));
   }, []);
 
   useEffect(() => {
@@ -180,7 +192,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
     const mapped = stars
       .map((star) => {
         const dAz = shortestAngleDiff(star.azimuth, heading);
-        const dAlt = star.altitude - pitch;
+        const dAlt = star.altitude - cameraAltitude;
 
         if (Math.abs(dAz) > halfH || Math.abs(dAlt) > halfV) return null;
 
@@ -237,7 +249,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
     ctx.stroke();
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [size, stars, heading, pitch]);
+  }, [size, stars, heading, cameraAltitude]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
@@ -264,7 +276,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
           <div className="rounded-full bg-black/50 px-3 py-2 text-xs text-white backdrop-blur">
             <span className="inline-flex items-center gap-1">
               <Compass size={14} />
-              方位 {Math.round(heading)}° / 仰角 {Math.round(pitch)}°
+              方位 {Math.round(heading)}° / 仰角 {Math.round(cameraAltitude)}°
             </span>
           </div>
         </div>
