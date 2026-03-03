@@ -16,11 +16,19 @@ interface ARSkyViewProps {
 }
 
 const normalizeDegree = (value: number) => ((value % 360) + 360) % 360;
+const deg2rad = (deg: number) => (deg * Math.PI) / 180;
+const rad2deg = (rad: number) => (rad * 180) / Math.PI;
+const SQRT_HALF = Math.sqrt(0.5);
+
+type Vec3 = { x: number; y: number; z: number };
+type Quaternion = { x: number; y: number; z: number; w: number };
 
 const shortestAngleDiff = (target: number, base: number) => {
   const diff = normalizeDegree(target - base);
   return diff > 180 ? diff - 360 : diff;
 };
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const headingFromEvent = (event: DeviceOrientationEvent): number | null => {
   const webkitHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
@@ -35,23 +43,107 @@ const headingFromEvent = (event: DeviceOrientationEvent): number | null => {
   return null;
 };
 
-const clampAltitude = (value: number) => Math.max(-90, Math.min(90, value));
+const dot = (a: Vec3, b: Vec3) => a.x * b.x + a.y * b.y + a.z * b.z;
+const norm = (v: Vec3) => Math.sqrt(dot(v, v));
+const normalizeVec = (v: Vec3): Vec3 => {
+  const n = norm(v);
+  if (n === 0) return v;
+  return { x: v.x / n, y: v.y / n, z: v.z / n };
+};
 
-const cameraAltitudeFromEvent = (event: DeviceOrientationEvent): number => {
-  const beta = typeof event.beta === "number" && Number.isFinite(event.beta) ? event.beta : 0;
-  const gamma = typeof event.gamma === "number" && Number.isFinite(event.gamma) ? event.gamma : 0;
+const quatMultiply = (a: Quaternion, b: Quaternion): Quaternion => ({
+  x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+  y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+  z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+  w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+});
 
-  // DeviceOrientation beta/gamma axes are device-relative.
-  // Convert to a camera-like altitude where "toward sky" is positive.
-  const screenAngle =
-    typeof window !== "undefined"
-      ? window.screen.orientation?.angle ?? ((window as Window & { orientation?: number }).orientation ?? 0)
-      : 0;
+const quatFromEulerYXZ = (x: number, y: number, z: number): Quaternion => {
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+  return {
+    x: s1 * c2 * c3 + c1 * s2 * s3,
+    y: c1 * s2 * c3 - s1 * c2 * s3,
+    z: c1 * c2 * s3 - s1 * s2 * c3,
+    w: c1 * c2 * c3 + s1 * s2 * s3,
+  };
+};
 
-  const normalizedScreenAngle = normalizeDegree(screenAngle);
-  if (normalizedScreenAngle === 90) return clampAltitude(-gamma);
-  if (normalizedScreenAngle === 270) return clampAltitude(gamma);
-  return clampAltitude(-beta);
+const rotateVecByQuat = (v: Vec3, q: Quaternion): Vec3 => {
+  const ix = q.w * v.x + q.y * v.z - q.z * v.y;
+  const iy = q.w * v.y + q.z * v.x - q.x * v.z;
+  const iz = q.w * v.z + q.x * v.y - q.y * v.x;
+  const iw = -q.x * v.x - q.y * v.y - q.z * v.z;
+  return {
+    x: ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y,
+    y: iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z,
+    z: iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x,
+  };
+};
+
+const rotateAroundUp = (v: Vec3, degree: number): Vec3 => {
+  const t = deg2rad(degree);
+  const c = Math.cos(t);
+  const s = Math.sin(t);
+  return {
+    x: v.x * c + v.y * s,
+    y: v.y * c - v.x * s,
+    z: v.z,
+  };
+};
+
+const rotateAroundAxis = (v: Vec3, axis: Vec3, degree: number): Vec3 => {
+  const k = normalizeVec(axis);
+  const t = deg2rad(degree);
+  const c = Math.cos(t);
+  const s = Math.sin(t);
+  const kv = dot(k, v);
+  return {
+    x: v.x * c + (k.y * v.z - k.z * v.y) * s + k.x * kv * (1 - c),
+    y: v.y * c + (k.z * v.x - k.x * v.z) * s + k.y * kv * (1 - c),
+    z: v.z * c + (k.x * v.y - k.y * v.x) * s + k.z * kv * (1 - c),
+  };
+};
+
+const azimuthFromVec = (v: Vec3) => normalizeDegree(rad2deg(Math.atan2(v.x, v.y)));
+const altitudeFromVec = (v: Vec3) => rad2deg(Math.asin(clamp(v.z, -1, 1)));
+
+const vectorFromAzAlt = (azimuth: number, altitude: number): Vec3 => {
+  const az = deg2rad(azimuth);
+  const alt = deg2rad(altitude);
+  const cosAlt = Math.cos(alt);
+  return {
+    x: cosAlt * Math.sin(az), // east
+    y: cosAlt * Math.cos(az), // north
+    z: Math.sin(alt), // up
+  };
+};
+
+const getScreenAngle = () => {
+  if (typeof window === "undefined") return 0;
+  return window.screen.orientation?.angle ?? ((window as Window & { orientation?: number }).orientation ?? 0);
+};
+
+const quaternionFromDeviceOrientation = (
+  alphaDeg: number,
+  betaDeg: number,
+  gammaDeg: number,
+  screenAngleDeg: number
+): Quaternion => {
+  const alpha = deg2rad(alphaDeg);
+  const beta = deg2rad(betaDeg);
+  const gamma = deg2rad(gammaDeg);
+  const orient = deg2rad(screenAngleDeg);
+
+  // Same conversion as three.js DeviceOrientationControls.
+  const qEuler = quatFromEulerYXZ(beta, alpha, -gamma);
+  const qCamera = { x: -SQRT_HALF, y: 0, z: 0, w: SQRT_HALF };
+  const qScreen = { x: 0, y: 0, z: Math.sin(-orient / 2), w: Math.cos(-orient / 2) };
+  return quatMultiply(quatMultiply(qEuler, qCamera), qScreen);
 };
 
 const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
@@ -69,9 +161,16 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
   const [isListening, setIsListening] = useState(false);
   const [heading, setHeading] = useState(0);
   const [cameraAltitude, setCameraAltitude] = useState(0);
+  const [yawOffset, setYawOffset] = useState(0);
+  const [altitudeOffset, setAltitudeOffset] = useState(0);
   const [now, setNow] = useState(() => new Date());
+  const orientationRef = useRef({ alpha: 0, beta: 0, gamma: 0, screenAngle: 0, hasValue: false });
 
   const stars = useMemo(() => getVisibleStars(lat, lon, now, true), [lat, lon, now]);
+  const starVectors = useMemo(
+    () => stars.map((star) => ({ star, vector: vectorFromAzAlt(star.azimuth, star.altitude) })),
+    [stars]
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30000);
@@ -135,9 +234,19 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
     const nextHeading = headingFromEvent(event);
     if (nextHeading !== null) {
       setHeading(nextHeading);
-      setOrientationStatus("active");
     }
-    setCameraAltitude(cameraAltitudeFromEvent(event));
+
+    const alpha = typeof event.alpha === "number" && Number.isFinite(event.alpha) ? event.alpha : 0;
+    const beta = typeof event.beta === "number" && Number.isFinite(event.beta) ? event.beta : 0;
+    const gamma = typeof event.gamma === "number" && Number.isFinite(event.gamma) ? event.gamma : 0;
+    const screenAngle = getScreenAngle();
+
+    orientationRef.current = { alpha, beta, gamma, screenAngle, hasValue: true };
+    setOrientationStatus("active");
+
+    const quat = quaternionFromDeviceOrientation(alpha, beta, gamma, screenAngle);
+    const forward = normalizeVec(rotateVecByQuat({ x: 0, y: 0, z: -1 }, quat));
+    setCameraAltitude(altitudeFromVec(forward));
   }, []);
 
   useEffect(() => {
@@ -186,18 +295,45 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
 
     const hFov = 70;
     const vFov = 50;
-    const halfH = hFov / 2;
-    const halfV = vFov / 2;
+    const fx = (width / 2) / Math.tan(deg2rad(hFov / 2));
+    const fy = (height / 2) / Math.tan(deg2rad(vFov / 2));
 
-    const mapped = stars
-      .map((star) => {
-        const dAz = shortestAngleDiff(star.azimuth, heading);
-        const dAlt = star.altitude - cameraAltitude;
+    const orientation = orientationRef.current;
+    if (!orientation.hasValue) {
+      rafRef.current = requestAnimationFrame(draw);
+      return;
+    }
 
-        if (Math.abs(dAz) > halfH || Math.abs(dAlt) > halfV) return null;
+    const quat = quaternionFromDeviceOrientation(
+      orientation.alpha,
+      orientation.beta,
+      orientation.gamma,
+      orientation.screenAngle
+    );
 
-        const x = width / 2 + (dAz / halfH) * (width / 2);
-        const y = height / 2 - (dAlt / halfV) * (height / 2);
+    let right = normalizeVec(rotateVecByQuat({ x: 1, y: 0, z: 0 }, quat));
+    let up = normalizeVec(rotateVecByQuat({ x: 0, y: 1, z: 0 }, quat));
+    let forward = normalizeVec(rotateVecByQuat({ x: 0, y: 0, z: -1 }, quat));
+
+    right = normalizeVec(rotateAroundUp(right, yawOffset));
+    up = normalizeVec(rotateAroundUp(up, yawOffset));
+    forward = normalizeVec(rotateAroundUp(forward, yawOffset));
+
+    if (altitudeOffset !== 0) {
+      up = normalizeVec(rotateAroundAxis(up, right, altitudeOffset));
+      forward = normalizeVec(rotateAroundAxis(forward, right, altitudeOffset));
+    }
+
+    const mapped = starVectors
+      .map(({ star, vector }) => {
+        const vx = dot(vector, right);
+        const vy = dot(vector, up);
+        const vz = dot(vector, forward);
+        if (vz <= 0) return null;
+
+        const x = width / 2 + fx * (vx / vz);
+        const y = height / 2 - fy * (vy / vz);
+        if (x < -32 || x > width + 32 || y < -32 || y > height + 32) return null;
         return { star, x, y };
       })
       .filter((item): item is { star: (typeof stars)[number]; x: number; y: number } => item !== null);
@@ -249,7 +385,7 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
     ctx.stroke();
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [size, stars, heading, cameraAltitude]);
+  }, [size, stars, starVectors, yawOffset, altitudeOffset]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
@@ -307,6 +443,49 @@ const ARSkyView = ({ lat, lon, onClose }: ARSkyViewProps) => {
               カメラ映像に星座を重ねて表示中
             </p>
           )}
+
+          <div className="pt-2 space-y-2">
+            <p className="text-[11px] text-white/80">微調整（ズレ補正）</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setYawOffset((v) => Math.max(-20, v - 1))}
+                className="rounded-full bg-white/15 px-2 py-1 text-[11px]"
+              >
+                ←
+              </button>
+              <button
+                onClick={() => setYawOffset((v) => Math.min(20, v + 1))}
+                className="rounded-full bg-white/15 px-2 py-1 text-[11px]"
+              >
+                →
+              </button>
+              <span className="text-[11px]">左右 {yawOffset > 0 ? "+" : ""}{yawOffset}°</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAltitudeOffset((v) => Math.max(-20, v - 1))}
+                className="rounded-full bg-white/15 px-2 py-1 text-[11px]"
+              >
+                ↓
+              </button>
+              <button
+                onClick={() => setAltitudeOffset((v) => Math.min(20, v + 1))}
+                className="rounded-full bg-white/15 px-2 py-1 text-[11px]"
+              >
+                ↑
+              </button>
+              <span className="text-[11px]">上下 {altitudeOffset > 0 ? "+" : ""}{altitudeOffset}°</span>
+            </div>
+            <button
+              onClick={() => {
+                setYawOffset(0);
+                setAltitudeOffset(0);
+              }}
+              className="rounded-full bg-white/15 px-3 py-1 text-[11px]"
+            >
+              補正をリセット
+            </button>
+          </div>
         </div>
       </div>
     </div>
