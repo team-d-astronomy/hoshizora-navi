@@ -3,7 +3,6 @@ import {
   getVisibleStars,
   horizontalToScreen,
   CONSTELLATIONS,
-  STARS,
   type Constellation,
   type Star,
 } from "@/lib/astronomy";
