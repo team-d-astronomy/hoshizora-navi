@@ -4,6 +4,7 @@ import SkyMap from "@/components/SkyMap";
 import ConstellationList from "@/components/ConstellationList";
 import ConstellationCard from "@/components/ConstellationCard";
 import StarQuiz from "@/components/StarQuiz";
+import StarMapPin from "@/components/StarMapPin";
 import Horoscope from "@/components/Horoscope";
 import BottomNav from "@/components/BottomNav";
 import DeviceCompass from "@/components/DeviceCompass";
@@ -11,7 +12,7 @@ import ARSkyView from "@/components/ARSkyView";
 import { type Constellation } from "@/lib/astronomy";
 import { MapPin, Star, Sparkles } from "lucide-react";
 
-type Tab = "home" | "map" | "encyclopedia" | "quiz" | "fortune";
+type Tab = "home" | "map" | "encyclopedia" | "quiz" | "city" | "fortune";
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>("home");
@@ -45,7 +46,7 @@ const Index = () => {
         <header className="text-center mb-6">
           <h1 className="text-3xl font-display font-black text-gradient-star flex items-center justify-center gap-2">
             <Sparkles className="text-primary" size={28} />
-            ほしぞらナビ
+            星空ナビ
             <Sparkles className="text-primary" size={28} />
           </h1>
           {location && (
@@ -92,7 +93,7 @@ const Index = () => {
               >
                 <span className="text-3xl block mb-1">🎮</span>
                 <p className="font-display font-bold text-sm text-foreground">星クイズ</p>
-                <p className="text-[10px] text-muted-foreground">ちしきをためそう！</p>
+                <p className="text-[10px] text-muted-foreground">知識をためそう！</p>
               </button>
             </div>
           </div>
@@ -151,6 +152,13 @@ const Index = () => {
           </div>
         )}
 
+        {/* City MapPin Tab */}
+        {tab === "city" && (
+          <div className="animate-in fade-in duration-500 -m-4">
+            <StarMapPin />
+          </div>
+         )}
+        
         {/* Fortune Tab */}
         {tab === "fortune" && (
           <div className="space-y-4 animate-in fade-in duration-500">
@@ -158,6 +166,7 @@ const Index = () => {
             <Horoscope />
           </div>
         )}
+        
       </main>
 
       <BottomNav active={tab} onChange={setTab} />
