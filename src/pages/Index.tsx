@@ -5,12 +5,14 @@ import ConstellationList from "@/components/ConstellationList";
 import ConstellationCard from "@/components/ConstellationCard";
 import StarQuiz from "@/components/StarQuiz";
 import StarMapPin from "@/components/StarMapPin";
+import Horoscope from "@/components/Horoscope";
 import BottomNav from "@/components/BottomNav";
 import DeviceCompass from "@/components/DeviceCompass";
+import ARSkyView from "@/components/ARSkyView";
 import { type Constellation } from "@/lib/astronomy";
 import { MapPin, Star, Sparkles } from "lucide-react";
 
-type Tab = "home" | "map" | "encyclopedia" | "quiz" | "city";
+type Tab = "home" | "map" | "encyclopedia" | "quiz" | "city" | "fortune";
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>("home");
@@ -18,6 +20,7 @@ const Index = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedCon, setSelectedCon] = useState<Constellation | null>(null);
   const [showBelow, setShowBelow] = useState(true);
+  const [showArView, setShowArView] = useState(false);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -119,6 +122,14 @@ const Index = () => {
               showBelow={showBelow}
               onSelectConstellation={setSelectedCon}
             />
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowArView(true)}
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all active:scale-95"
+              >
+                📷 カメラで鑑賞
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground text-center">
               星をタップすると星座の情報が見られるよ ✨
             </p>
@@ -146,13 +157,26 @@ const Index = () => {
           <div className="animate-in fade-in duration-500 -m-4">
             <StarMapPin />
           </div>
+         )}
+        
+        {/* Fortune Tab */}
+        {tab === "fortune" && (
+          <div className="space-y-4 animate-in fade-in duration-500">
+            <h2 className="text-lg font-display font-bold text-foreground">🔮 星座うらない</h2>
+            <Horoscope />
+          </div>
         )}
+        
       </main>
 
       <BottomNav active={tab} onChange={setTab} />
 
       {selectedCon && (
         <ConstellationCard constellation={selectedCon} onClose={() => setSelectedCon(null)} />
+      )}
+
+      {showArView && location && (
+        <ARSkyView lat={location.lat} lon={location.lon} onClose={() => setShowArView(false)} />
       )}
     </div>
   );
